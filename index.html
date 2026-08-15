@@ -1,151 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dodge Master 🎮</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: #080808;
-            color: white;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        h1 { margin: 0 0 10px; font-size: 36px; }
-        #gameContainer { position: relative; }
-        canvas {
-            display: block;
-            background: #151515;
-            border: 3px solid white;
-            border-radius: 10px;
-            box-shadow: 0 0 25px rgba(255,255,255,0.15);
-        }
-        #score, #highScore {
-            position: absolute;
-            left: 20px;
-            z-index: 2;
-            font-weight: bold;
-        }
-        #score { top: 15px; font-size: 22px; }
-        #highScore { top: 45px; font-size: 16px; color: #aaa; }
-        #gameOver, #startScreen {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.88);
-            border-radius: 8px;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            z-index: 10;
-        }
-        #gameOver { display: none; }
-        #startScreen { display: flex; }
-        #gameOver h2, #startScreen h2 { font-size: 40px; margin: 0 0 10px; }
-        #finalScore { font-size: 22px; margin-bottom: 20px; }
-        #startScreen p { color: #aaa; margin-bottom: 20px; }
-        button {
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        button:hover { transform: scale(1.05); }
-        #instructions { margin-top: 15px; color: #aaa; text-align: center; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Dodge Master 2.0 🎮</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#080808;color:#fff;font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center}h1{margin:0 0 8px;font-size:34px}#gameContainer{position:relative;width:min(700px,94vw)}canvas{display:block;width:100%;height:auto;background:#111;border:3px solid #fff;border-radius:12px;box-shadow:0 0 28px #000}#hud{position:absolute;top:12px;left:15px;right:15px;display:flex;justify-content:space-between;pointer-events:none;font-weight:bold;text-shadow:2px 2px #000}.stat{font-size:18px;margin:3px 0}.overlay{position:absolute;inset:0;background:rgba(0,0,0,.86);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px}.hidden{display:none}.overlay h2{font-size:40px;margin:0 0 8px}.overlay p{color:#bbb;margin:7px}.btn{border:0;border-radius:9px;padding:13px 26px;margin-top:16px;font-size:18px;font-weight:bold;cursor:pointer}.btn:hover{transform:scale(1.05)}#instructions{color:#aaa;margin-top:12px;text-align:center}.power{font-weight:bold}#message{position:absolute;top:78px;left:0;right:0;text-align:center;font-size:20px;font-weight:bold;text-shadow:2px 2px #000;pointer-events:none;opacity:0;transition:opacity .2s}
+</style>
 </head>
 <body>
-    <h1>🚀 DODGE MASTER</h1>
-    <div id="gameContainer">
-        <canvas id="game" width="700" height="450"></canvas>
-        <div id="score">Score: 0</div>
-        <div id="highScore">Best: 0</div>
-        <div id="startScreen">
-            <h2>Ready? 😈</h2>
-            <p>Use the LEFT and RIGHT arrow keys</p>
-            <button onclick="startGame()">START GAME</button>
-        </div>
-        <div id="gameOver">
-            <h2>💀 GAME OVER</h2>
-            <div id="finalScore">Your score: 0</div>
-            <button onclick="restartGame()">PLAY AGAIN</button>
-        </div>
-    </div>
-    <div id="instructions">⬅️ Move Left &nbsp;&nbsp; | &nbsp;&nbsp; Move Right ➡️</div>
-    <script>
-        const canvas = document.getElementById("game");
-        const ctx = canvas.getContext("2d");
-        const scoreDisplay = document.getElementById("score");
-        const highScoreDisplay = document.getElementById("highScore");
-        const gameOverScreen = document.getElementById("gameOver");
-        const startScreen = document.getElementById("startScreen");
-        const finalScoreDisplay = document.getElementById("finalScore");
-        let keys = {}, score = 0, highScore = Number(localStorage.getItem("dodgeHighScore")) || 0;
-        let gameRunning = false, animation, spawnTimer = 0, spawnRate = 55, blockSpeed = 4, blocks = [];
-        highScoreDisplay.textContent = "Best: " + highScore;
-        const player = { x: 325, y: 395, width: 50, height: 30, speed: 8 };
-        document.addEventListener("keydown", e => { keys[e.key] = true; if (["ArrowLeft","ArrowRight"].includes(e.key)) e.preventDefault(); });
-        document.addEventListener("keyup", e => { keys[e.key] = false; });
-        function startGame() {
-            startScreen.style.display = "none";
-            score = 0; blockSpeed = 4; spawnRate = 55; blocks = []; spawnTimer = 0;
-            player.x = canvas.width / 2 - player.width / 2;
-            scoreDisplay.textContent = "Score: 0";
-            gameRunning = true;
-            gameLoop();
-        }
-        function restartGame() { gameOverScreen.style.display = "none"; startGame(); }
-        function createBlock() {
-            const size = 25 + Math.random() * 30;
-            blocks.push({ x: Math.random() * (canvas.width - size), y: -size, width: size, height: size, speed: blockSpeed });
-        }
-        function update() {
-            if (keys["ArrowLeft"]) player.x -= player.speed;
-            if (keys["ArrowRight"]) player.x += player.speed;
-            if (player.x < 0) player.x = 0;
-            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-            spawnTimer++;
-            if (spawnTimer >= spawnRate) { createBlock(); spawnTimer = 0; }
-            for (let i = blocks.length - 1; i >= 0; i--) {
-                blocks[i].y += blocks[i].speed;
-                if (player.x < blocks[i].x + blocks[i].width && player.x + player.width > blocks[i].x && player.y < blocks[i].y + blocks[i].height && player.y + player.height > blocks[i].y) { endGame(); return; }
-                if (blocks[i].y > canvas.height) {
-                    blocks.splice(i, 1); score++; scoreDisplay.textContent = "Score: " + score;
-                    if (score % 5 === 0) { blockSpeed += 0.5; if (spawnRate > 25) spawnRate -= 3; }
-                }
-            }
-        }
-        function drawBackground() {
-            ctx.fillStyle = "#151515"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#333";
-            for (let i = 0; i < 50; i++) ctx.fillRect((i * 97) % canvas.width, (i * 53) % canvas.height, 2, 2);
-        }
-        function drawPlayer() {
-            ctx.fillStyle = "#00ff66"; ctx.fillRect(player.x, player.y, player.width, player.height);
-            ctx.fillStyle = "#111"; ctx.fillRect(player.x + 12, player.y + 6, 26, 8);
-            ctx.fillStyle = "#777"; ctx.fillRect(player.x + 5, player.y + 25, 10, 8); ctx.fillRect(player.x + 35, player.y + 25, 10, 8);
-        }
-        function drawBlocks() {
-            blocks.forEach(block => {
-                ctx.fillStyle = "#ff3333"; ctx.fillRect(block.x, block.y, block.width, block.height);
-                ctx.fillStyle = "#ff9999"; ctx.fillRect(block.x + 5, block.y + 5, Math.max(3, block.width / 4), Math.max(3, block.height / 4));
-            });
-        }
-        function draw() { drawBackground(); drawPlayer(); drawBlocks(); }
-        function gameLoop() { if (!gameRunning) return; update(); draw(); animation = requestAnimationFrame(gameLoop); }
-        function endGame() {
-            gameRunning = false; cancelAnimationFrame(animation);
-            if (score > highScore) { highScore = score; localStorage.setItem("dodgeHighScore", highScore); highScoreDisplay.textContent = "Best: " + highScore; }
-            finalScoreDisplay.textContent = "Your score: " + score;
-            gameOverScreen.style.display = "flex";
-        }
-    </script>
+<h1>🚀 DODGE MASTER 2.0</h1>
+<div id="gameContainer">
+<canvas id="game" width="700" height="450"></canvas>
+<div id="hud"><div><div class="stat" id="score">Score: 0</div><div class="stat" id="coins">🪙 0</div></div><div style="text-align:right"><div class="stat" id="lives">❤️❤️❤️</div><div class="stat" id="best">Best: 0</div></div></div>
+<div id="message"></div>
+<div class="overlay" id="startScreen"><h2>🔥 DODGE MASTER</h2><p>Dodge enemies, collect coins and grab power-ups.</p><p>⬅️ ➡️ Arrow keys or A / D to move</p><button class="btn" onclick="startGame()">START GAME</button></div>
+<div class="overlay hidden" id="gameOver"><h2>💀 GAME OVER</h2><p id="finalScore">Score: 0</p><p id="finalCoins">Coins: 0</p><button class="btn" onclick="startGame()">PLAY AGAIN</button></div>
+</div>
+<div id="instructions">🪙 Coins = bonus points &nbsp; | &nbsp; 🛡️ Shield = protection &nbsp; | &nbsp; ⚡ Slow = slow enemies</div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const scoreEl=document.getElementById('score'),coinsEl=document.getElementById('coins'),livesEl=document.getElementById('lives'),bestEl=document.getElementById('best'),messageEl=document.getElementById('message');
+const startScreen=document.getElementById('startScreen'),gameOver=document.getElementById('gameOver'),finalScore=document.getElementById('finalScore'),finalCoins=document.getElementById('finalCoins');
+let keys={},score=0,coins=0,lives=3,best=Number(localStorage.getItem('dodgeBest'))||0,gameRunning=false,animation=0,spawnTimer=0,coinTimer=0,powerTimer=0,enemySpeed=3.5,spawnRate=55,shield=0,slow=0,messageTimer=0;
+bestEl.textContent='Best: '+best;
+const player={x:325,y:395,w:50,h:30,speed:8};let enemies=[],coinItems=[],powers=[];
+document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(['arrowleft','arrowright','a','d',' '].includes(e.key.toLowerCase()))e.preventDefault();});
+document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function startGame(){startScreen.classList.add('hidden');gameOver.classList.add('hidden');score=0;coins=0;lives=3;spawnTimer=0;coinTimer=0;powerTimer=0;enemySpeed=3.5;spawnRate=55;shield=0;slow=0;enemies=[];coinItems=[];powers=[];player.x=325;gameRunning=true;updateHud();gameLoop();}
+function updateHud(){scoreEl.textContent='Score: '+score;coinsEl.textContent='🪙 '+coins;livesEl.textContent='❤️'.repeat(lives)+'🖤'.repeat(3-lives);bestEl.textContent='Best: '+best;}
+function showMessage(text){messageEl.textContent=text;messageEl.style.opacity=1;clearTimeout(messageTimer);messageTimer=setTimeout(()=>messageEl.style.opacity=0,900);}
+function hit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function spawnEnemy(){let size=25+Math.random()*32;enemies.push({x:Math.random()*(canvas.width-size),y:-size,w:size,h:size,speed:enemySpeed*(.8+Math.random()*.5)});}
+function spawnCoin(){let size=18;coinItems.push({x:15+Math.random()*(canvas.width-30),y:-size,w:size,h:size,speed:2.8});}
+function spawnPower(){let type=Math.random()<.5?'shield':'slow';powers.push({x:20+Math.random()*(canvas.width-40),y:-22,w:22,h:22,speed:2.4,type});}
+function loseLife(){lives--;updateHud();if(lives<=0)endGame();else showMessage('💥 Ouch! '+lives+' lives left');}
+function update(){
+ if(keys['arrowleft']||keys['a'])player.x-=player.speed;if(keys['arrowright']||keys['d'])player.x+=player.speed;
+ if(player.x<0)player.x=0;if(player.x+player.w>canvas.width)player.x=canvas.width-player.w;
+ let speedFactor=slow>0?.45:1;if(slow>0)slow--;
+ spawnTimer++;coinTimer++;powerTimer++;
+ if(spawnTimer>=spawnRate){spawnEnemy();spawnTimer=0}if(coinTimer>=75){spawnCoin();coinTimer=0}if(powerTimer>=500){spawnPower();powerTimer=0}
+ for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];e.y+=e.speed*speedFactor;if(hit(player,e)){enemies.splice(i,1);if(shield>0){shield=0;showMessage('🛡️ SHIELD SAVED YOU!')}else loseLife();if(!gameRunning)return;continue}if(e.y>canvas.height){enemies.splice(i,1);score++;if(score%5===0){enemySpeed+=.35;if(spawnRate>25)spawnRate-=2}updateHud()}}
+ for(let i=coinItems.length-1;i>=0;i--){let c=coinItems[i];c.y+=c.speed;if(hit(player,c)){coins++;score+=3;coinItems.splice(i,1);showMessage('🪙 +3 POINTS');updateHud()}else if(c.y>canvas.height)coinItems.splice(i,1)}
+ for(let i=powers.length-1;i>=0;i--){let p=powers[i];p.y+=p.speed;if(hit(player,p)){if(p.type==='shield'){shield=1;showMessage('🛡️ SHIELD ACTIVE')}else{slow=360;showMessage('⚡ SLOW MOTION!')}powers.splice(i,1)}else if(p.y>canvas.height)powers.splice(i,1)}
+}
+function draw(){ctx.fillStyle='#101010';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#2a2a2a';for(let i=0;i<55;i++)ctx.fillRect((i*97)%canvas.width,(i*53)%canvas.height,2,2);
+ ctx.fillStyle='#00ff66';ctx.fillRect(player.x,player.y,player.w,player.h);ctx.fillStyle='#111';ctx.fillRect(player.x+12,player.y+6,26,8);ctx.fillStyle='#777';ctx.fillRect(player.x+5,player.y+25,10,8);ctx.fillRect(player.x+35,player.y+25,10,8);
+ if(shield>0){ctx.strokeStyle='#66ccff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(player.x+25,player.y+15,34,0,Math.PI*2);ctx.stroke()}
+ enemies.forEach(e=>{ctx.fillStyle='#ff3333';ctx.fillRect(e.x,e.y,e.w,e.h);ctx.fillStyle='#ff9999';ctx.fillRect(e.x+5,e.y+5,Math.max(3,e.w/4),Math.max(3,e.h/4))});
+ coinItems.forEach(c=>{ctx.fillStyle='#ffd700';ctx.beginPath();ctx.arc(c.x+c.w/2,c.y+c.h/2,c.w/2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8a6500';ctx.font='12px Arial';ctx.fillText('$',c.x+6,c.y+15)});
+ powers.forEach(p=>{ctx.fillStyle=p.type==='shield'?'#4dc3ff':'#b56cff';ctx.beginPath();ctx.arc(p.x+p.w/2,p.y+p.h/2,p.w/2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 14px Arial';ctx.fillText(p.type==='shield'?'S':'⚡',p.x+5,p.y+16)})
+}
+function gameLoop(){if(!gameRunning)return;update();draw();animation=requestAnimationFrame(gameLoop)}
+function endGame(){gameRunning=false;cancelAnimationFrame(animation);if(score>best){best=score;localStorage.setItem('dodgeBest',best)}updateHud();finalScore.textContent='Score: '+score;finalCoins.textContent='🪙 Coins: '+coins;gameOver.classList.remove('hidden');}
+</script>
 </body>
 </html>
